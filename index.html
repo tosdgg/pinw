@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>試算表驅動彈珠台</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #222;
+            color: white;
+            font-family: sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            text-align: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+        canvas {
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border-radius: 4px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+
+    <div id="info">
+        <h1>試算表彈珠台</h1>
+        <p>點擊畫面任意處生成彈珠 | 釘子位置由 Google Sheet 控制</p>
+        <p id="status">正在讀取試算表...</p>
+    </div>
+
+    <script>
+        // --- 設定區 ---
+        
+        // 請將此處替換為你的 Google Sheet CSV 連結
+        // 格式通常是: https://docs.google.com/spreadsheets/d/{ID}/export?format=csv&gid={GID}
+        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR6...你的連結.../pub?output=csv';
+        
+        // 為了演示，我這裡放一個模擬數據的 Blob URL (實際使用時請換成上面的真實連結)
+        // 如果你有真實連結，將下面這行設為 const CSV_URL = GOOGLE_SHEET_CSV_URL;
+        const DEMO_DATA = `x,y,size
+200,200,20
+300,250,20
+400,200,20
+500,250,20
+600,200,20
+250,350,15
+350,400,15
+450,350,15
+550,400,15
+300,500,10
+400,500,25
+500,500,10`;
+        const CSV_URL = "data:text/csv;charset=utf-8," + encodeURIComponent(DEMO_DATA);
+
+
+        // --- 物理引擎初始化 ---
+        const Engine = Matter.Engine,
+              Render = Matter.Render,
+              Runner = Matter.Runner,
+              Bodies = Matter.Bodies,
+              Composite = Matter.Composite,
+              Mouse = Matter.Mouse,
+              MouseConstraint = Matter.MouseConstraint;
+
+        const engine = Engine.create();
+        const world = engine.world;
+
+        // 設定畫布大小
+        const width = 800;
+        const height = 600;
+
+        const render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                width: width,
+                height: height,
+                wireframes: false, // 設為 false 才有顏色
+                background: '#333'
+            }
+        });
+
+        // --- 遊戲邏輯 ---
+
+        // 1. 建立邊界 (地板與牆壁)
+        const walls = [
+            Bodies.rectangle(width/2, height + 30, width, 60, { isStatic: true, render: { fillStyle: '#555' } }), // 地板
+            Bodies.rectangle(-30, height/2, 60, height, { isStatic: true }), // 左牆
+            Bodies.rectangle(width + 30, height/2, 60, height, { isStatic: true }) // 右牆
+        ];
+        Composite.add(world, walls);
+
+        // 2. 讀取 Google Sheet 資料並生成釘子
+        function loadPins() {
+            Papa.parse(CSV_URL, {
+                download: true, // 如果是真實網址，設為 true
+                header: true,   // 讀取第一列作為標題 (x, y)
+                dynamicTyping: true, // 自動將字串轉為數字
+                complete: function(results) {
+                    const pins = [];
+                    const data = results.data;
+                    
+                    data.forEach(row => {
+                        // 確保該行有 x 和 y 數據
+                        if (row.x && row.y) {
+                            const size = row.size || 15; // 預設半徑 15
+                            const pin = Bodies.circle(row.x, row.y, size, {
+                                isStatic: true, // 釘子是固定的
+                                render: {
+                                    fillStyle: '#f1c40f', // 金色釘子
+                                    strokeStyle: '#fff',
+                                    lineWidth: 2
+                                },
+                                restitution: 1 // 彈性 (1 = 完全彈性)
+                            });
+                            pins.push(pin);
+                        }
+                    });
+
+                    Composite.add(world, pins);
+                    document.getElementById('status').innerText = `已載入 ${pins.length} 個釘子！`;
+                },
+                error: function(err) {
+                    document.getElementById('status').innerText = "讀取失敗，請檢查 CSV 連結與權限。";
+                    console.error(err);
+                }
+            });
+        }
+
+        // 3. 生成彈珠的功能
+        function spawnBall(x, y) {
+            const ball = Bodies.circle(x, y, 10, {
+                restitution: 0.9, // 很有彈性
+                render: { fillStyle: '#e74c3c' } // 紅色球
+            });
+            Composite.add(world, ball);
+        }
+
+        // --- 啟動與互動 ---
+
+        loadPins(); // 載入釘子
+        Render.run(render);
+        const runner = Runner.create();
+        Runner.run(runner, engine);
+
+        // 滑鼠點擊生成球
+        render.canvas.addEventListener('mousedown', (event) => {
+            const rect = render.canvas.getBoundingClientRect();
+            spawnBall(event.clientX - rect.left, event.clientY - rect.top);
+        });
+
+        // 增加滑鼠拖曳功能 (除錯用，好玩)
+        const mouse = Mouse.create(render.canvas);
+        const mouseConstraint = MouseConstraint.create(engine, {
+            mouse: mouse,
+            constraint: {
+                stiffness: 0.2,
+                render: { visible: false }
+            }
+        });
+        Composite.add(world, mouseConstraint);
+        render.mouse = mouse;
+
+    </script>
+</body>
+</html>
