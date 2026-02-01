@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>REAL POWER PACHINKO</title>
+    <title>HYPER FORCE PACHINKO</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
 
@@ -41,7 +41,6 @@
             height: 750px;
             background: #050505;
             border: 2px solid #d4af37;
-            /* 右下角切角給發射器，並留出右側通道空間 */
             border-radius: 20px 20px 80px 20px;
             box-shadow: inset 0 0 40px rgba(212, 175, 55, 0.2);
             overflow: hidden;
@@ -90,23 +89,25 @@
         }
 
         #knob-container {
-            position: absolute;
-            bottom: 40px; right: 40px;
+            position: absolute; bottom: 40px; right: 40px;
             width: 90px; height: 90px;
             border-radius: 50%;
             background: radial-gradient(circle, #222, #000);
             border: 4px solid #d4af37;
             box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
-            cursor: pointer;
-            z-index: 20;
-            transition: 0.1s;
+            cursor: pointer; z-index: 20; transition: 0.1s;
         }
         #knob-container:active { transform: scale(0.95); }
         .knob-indicator {
             position: absolute; top: 10%; left: 45%; width: 10%; height: 40%;
             background: #d4af37; border-radius: 5px;
         }
-
+        
+        /* 加速區提示 (除錯用，實際看不到) */
+        .accelerator-hint {
+            position: absolute; top: 20px; right: 20px; width: 50px; height: 50px;
+            border: 2px dashed rgba(255,0,0,0.5); pointer-events: none; display: none;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -123,7 +124,6 @@
                 <div class="fever-text">JACKPOT</div>
             </div>
         </div>
-        
         <div id="knob-container" onmousedown="startFiring()" onmouseup="stopFiring()" onmouseleave="stopFiring()">
             <div class="knob-indicator"></div>
         </div>
@@ -137,11 +137,8 @@
 
         const engine = Engine.create();
         const world = engine.world;
-        
-        // --- 物理修正重點 1: 重力回歸 ---
-        // 把重力調回接近正常，讓下落更有速度感
-        engine.gravity.y = 1.1; 
-        
+        engine.gravity.y = 1.2; // 重力略強，掉落感更好
+
         const width = 480;
         const height = 750;
 
@@ -151,19 +148,22 @@
             options: { width, height, wireframes: false, background: 'transparent', pixelRatio: 2 }
         });
 
-        // --- 特效系統 (保持不變) ---
+        // --- 視覺特效 ---
         let particles = [];
-        function createExplosion(x, y, color) {
-            for (let i = 0; i < 15; i++) {
+        function createExplosion(x, y, color, count=15) {
+            for (let i = 0; i < count; i++) {
                 particles.push({
-                    x: x, y: y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10,
+                    x: x, y: y, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12,
                     life: 1.0, color: color || '#d4af37', size: Math.random() * 4 + 2
                 });
             }
         }
+        
         Events.on(render, 'afterRender', function() {
             const ctx = render.context;
             ctx.globalCompositeOperation = 'lighter';
+            
+            // 繪製粒子
             for (let i = particles.length - 1; i >= 0; i--) {
                 let p = particles[i];
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -171,29 +171,51 @@
                 p.x += p.vx; p.y += p.vy; p.life -= 0.05; p.size *= 0.9;
                 if (p.life <= 0) particles.splice(i, 1);
             }
+
+            // 繪製光暈與拖尾
             const bodies = Composite.allBodies(world);
             bodies.forEach(body => {
-                if (body.label === 'ball' && body.speed > 2) { // 速度快才顯示拖尾
+                // 彈珠拖尾 (藍色極速感)
+                if (body.label === 'ball' && body.speed > 3) {
                     ctx.beginPath(); ctx.moveTo(body.position.x, body.position.y);
-                    ctx.lineTo(body.position.x - body.velocity.x * 2, body.position.y - body.velocity.y * 2);
-                    ctx.lineWidth = body.circleRadius; ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.lineTo(body.position.x - body.velocity.x * 2.5, body.position.y - body.velocity.y * 2.5);
+                    ctx.lineWidth = body.circleRadius * 1.2; ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
                     ctx.lineCap = 'round'; ctx.stroke();
-                    ctx.shadowBlur = 15; ctx.shadowColor = '#00ffff';
+                    ctx.shadowBlur = 20; ctx.shadowColor = '#00ffff';
                 }
+                
+                // 釘子光暈
                 if (body.label === 'nail') {
-                     ctx.shadowBlur = 8; ctx.shadowColor = '#d4af37';
+                     ctx.shadowBlur = 6; ctx.shadowColor = '#d4af37';
                      ctx.fillStyle = '#fff8e7'; ctx.beginPath(); ctx.arc(body.position.x, body.position.y, 2.5, 0, Math.PI*2); ctx.fill();
                 }
+                
+                // 入賞口與牆壁光暈
                 if (body.label === 'pocket' || body.label === 'wall-glow') {
-                     ctx.shadowBlur = 20; ctx.shadowColor = body.render.strokeStyle || '#d4af37';
+                     ctx.shadowBlur = 15; ctx.shadowColor = body.render.strokeStyle || '#d4af37';
+                }
+                
+                // 加速軌道特效 (當球經過時發亮)
+                if (body.label === 'accelerator') {
+                    // 只有除錯時需要看到，平常隱藏，但這裡讓它發出一點點紅光代表危險區
+                    // ctx.fillStyle = 'rgba(255, 0, 0, 0.1)'; ctx.fill(); 
                 }
             });
             ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.shadowBlur = 0;
         });
 
-        // --- 結構修正重點 2: 重建發射軌道 ---
+        // --- 核心結構重建 ---
         const wallStyle = { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#d4af37', lineWidth: 2 }, label: 'wall-glow' };
         const invisibleWall = { isStatic: true, render: { visible: false } };
+
+        // 1. **加速器感應區 (The Accelerator)**
+        // 放在右上角彎道處。這是一個 Sensor，球碰到不會反彈，但會觸發事件。
+        const accelerator = Bodies.circle(440, 40, 40, {
+            isStatic: true,
+            isSensor: true, // 關鍵：讓球穿過去
+            label: 'accelerator',
+            render: { visible: false }
+        });
 
         const walls = [
             // 左邊界
@@ -201,24 +223,20 @@
             // 底部
             Bodies.rectangle(width/2, height + 50, width, 100, invisibleWall),
             
-            // **關鍵修正：右側發射通道**
-            // 內部隔板 (將遊戲區與發射區隔開) - 位置在 x=440
-            Bodies.rectangle(440, height/2 + 50, 10, height-100, wallStyle),
-            // 最右側外牆 (隱形，防止球飛出去)
-            Bodies.rectangle(width, height/2, 20, height, invisibleWall),
+            // 右側發射通道內壁 (隔板)
+            Bodies.rectangle(430, height/2 + 80, 10, height-160, wallStyle),
+            // 右側外壁 (隱形)
+            Bodies.rectangle(width + 10, height/2, 20, height, invisibleWall),
 
-            // **關鍵修正：頂部導流彎道**
-            // 移除舊的怪異直線，改成一個在右上角把球導向左邊的斜板
-            Bodies.rectangle(420, 40, 150, 10, { 
-                isStatic: true, 
-                angle: 0.4, // 傾斜角度
-                render: { fillStyle: '#111', strokeStyle: '#d4af37', lineWidth: 2 },
-                label: 'wall-glow'
-            })
+            // 頂部圓弧導流 (用多個矩形擬合一個平滑曲線，避免球直接撞死)
+            Bodies.rectangle(450, 20, 100, 20, { isStatic: true, angle: 0.4, render: {fillStyle:'#222'} }), 
+            Bodies.rectangle(380, 10, 100, 20, { isStatic: true, angle: 0.1, render: {fillStyle:'#222'} }),
+            
+            accelerator
         ];
         Composite.add(world, walls);
 
-        // 讀取 CSV (保持不變)
+        // --- 讀取 CSV ---
         function loadLevel() {
             Papa.parse(CSV_URL, {
                 download: true, header: true, dynamicTyping: true,
@@ -244,40 +262,37 @@
             });
         }
 
-        // --- 物理修正重點 3: 發射力量 ---
+        // --- 發射與物理邏輯 ---
         let fireInterval = null;
         function fireBall() {
-            // 發射點改到右側通道內 (x=465)
-            const ball = Bodies.circle(465, 700, 6, { 
+            // 發射點：右側通道底部
+            const ball = Bodies.circle(455, 700, 6, { 
                 label: 'ball',
-                frictionAir: 0.015,  // 大幅降低空氣阻力，讓球飛得快
-                restitution: 0.5,
-                density: 0.08,       // 增加密度，更有重量感
+                frictionAir: 0.01,  // 低阻力
+                restitution: 0.6,
+                density: 0.08,      // 高密度
                 render: { fillStyle: '#fff' } 
             });
             Composite.add(world, ball);
 
-            // **大幅增加向上衝擊力**
-            // 力道向量：x 稍微向左壓，y 強力向上
-            const baseForceY = -0.18; // 這個數值控制向上的力量，越大越猛
-            const baseForceX = -0.05; // 給一點點向左的力，讓它貼著軌道
-            const randomVariation = (Math.random() - 0.5) * 0.02;
+            // 發射力道：主要向上，稍微往右壓著牆壁走，這樣最穩
+            const forceY = -0.19; // 強力向上
+            const forceX = 0.01;  // 稍微向右，讓球貼著右牆滾上去，這是柏青哥的精髓
             
             Body.applyForce(ball, ball.position, { 
-                x: baseForceX + randomVariation, 
-                y: baseForceY + randomVariation 
+                x: forceX + (Math.random() * 0.005), 
+                y: forceY + (Math.random() * 0.01) 
             });
 
-            createExplosion(465, 700, '#00ffff');
+            createExplosion(455, 700, '#00ffff', 5);
         }
 
         window.startFiring = function() {
             if(fireInterval) return;
             fireBall();
-            fireInterval = setInterval(fireBall, 500); // 發射頻率
+            fireInterval = setInterval(fireBall, 400); // 400ms 一發，快節奏
             document.getElementById('knob-container').style.transform = 'rotate(20deg) scale(0.95)';
         }
-
         window.stopFiring = function() {
             clearInterval(fireInterval); fireInterval = null;
             document.getElementById('knob-container').style.transform = 'rotate(0deg) scale(1)';
@@ -285,17 +300,41 @@
         window.addEventListener('keydown', (e) => { if(e.code === 'Space') startFiring(); });
         window.addEventListener('keyup', (e) => { if(e.code === 'Space') stopFiring(); });
 
-        // 碰撞處理 (保持不變)
+        // --- 碰撞事件處理 (包含加速邏輯) ---
         let score = 0;
         Events.on(engine, 'collisionStart', (event) => {
             event.pairs.forEach(pair => {
                 const { bodyA, bodyB } = pair;
-                if ((bodyA.label === 'ball' && bodyB.label === 'nail') || (bodyB.label === 'ball' && bodyA.label === 'nail')) {
-                    createExplosion(pair.contacts[0].vertex.x, pair.contacts[0].vertex.y, '#ffd700');
+
+                // 1. 加速器邏輯 (解決你的 X 軸沒力問題)
+                // 當球碰到右上角的 Sensor 時，強制給一個向左的力
+                if ((bodyA.label === 'ball' && bodyB.label === 'accelerator') || 
+                    (bodyB.label === 'ball' && bodyA.label === 'accelerator')) {
+                    
+                    const ball = bodyA.label === 'ball' ? bodyA : bodyB;
+                    
+                    // 重設速度，避免累積過快
+                    Body.setVelocity(ball, { x: 0, y: 0 }); 
+                    
+                    // ★這裡就是你要的 X 軸推力★
+                    // 用力往左(-0.15)推，稍微往下(0.05)壓，形成完美的拋物線
+                    Body.applyForce(ball, ball.position, { x: -0.15, y: 0.05 });
+                    
+                    // 加速特效
+                    createExplosion(ball.position.x, ball.position.y, '#00ff00', 10);
                 }
+
+                // 2. 釘子碰撞
+                if ((bodyA.label === 'ball' && bodyB.label === 'nail') || (bodyB.label === 'ball' && bodyA.label === 'nail')) {
+                    createExplosion(pair.contacts[0].vertex.x, pair.contacts[0].vertex.y, '#ffd700', 3);
+                }
+
+                // 3. 進洞
                 if ((bodyA.label === 'ball' && bodyB.label === 'pocket') || (bodyB.label === 'ball' && bodyA.label === 'pocket')) {
                     triggerJackpot(bodyA.label === 'ball' ? bodyA : bodyB, bodyA.label === 'pocket' ? bodyA : bodyB);
                 }
+
+                // 4. 掉落移除
                 if (bodyA.label === 'floor' || bodyB.label === 'floor') {
                     Composite.remove(world, bodyA.label === 'ball' ? bodyA : bodyB);
                 }
@@ -303,11 +342,20 @@
         });
 
         function triggerJackpot(ball, pocket) {
-            Composite.remove(world, ball); score += 150;
+            Composite.remove(world, ball); 
+            score += 150;
             document.getElementById('score').innerText = score.toString().padStart(4, '0');
-            createExplosion(pocket.position.x, pocket.position.y, '#ff0055');
+            createExplosion(pocket.position.x, pocket.position.y, '#ff0055', 30); // 大爆炸
             document.getElementById('jackpot-overlay').classList.add('active');
             setTimeout(() => document.getElementById('jackpot-overlay').classList.remove('active'), 1000);
+            
+            // 進洞獎勵：多噴出 3 顆球 (連發快感)
+            let extra = 0;
+            let burst = setInterval(() => {
+                fireBall();
+                extra++;
+                if(extra >= 3) clearInterval(burst);
+            }, 100);
         }
 
         loadLevel(); Render.run(render); Runner.run(Runner.create(), engine);
