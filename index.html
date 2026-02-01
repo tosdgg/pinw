@@ -3,112 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>真實風格帕青哥 (Pachinko)</title>
+    <title>ULTIMATE LUXURY PACHINKO</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
+
         body {
             margin: 0;
-            background: #111;
+            background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            font-family: 'Arial Black', sans-serif;
             overflow: hidden;
+            font-family: 'Orbitron', sans-serif;
         }
 
-        /* 機台外殼 */
-        #pachinko-frame {
+        /* 整個機台發出金色聖光 */
+        #machine-container {
             position: relative;
             width: 520px;
             height: 850px;
-            background: linear-gradient(135deg, #ff0055 0%, #ff0000 50%, #990000 100%);
-            border-radius: 30px;
-            border: 10px solid #dcdcdc;
-            box-shadow: 0 0 80px rgba(255, 0, 0, 0.6), inset 0 0 20px rgba(0,0,0,0.5);
+            /* 模擬昂貴的陽極氧化金屬外殼 */
+            background: linear-gradient(135deg, #1a1a1a 0%, #000 100%);
+            border-radius: 40px;
+            padding: 20px;
+            box-shadow: 
+                0 0 0 5px #333,
+                0 0 0 10px #d4af37, /* 金邊 */
+                0 0 60px rgba(212, 175, 55, 0.4), /* 金色光暈 */
+                inset 0 0 100px rgba(0,0,0,0.8);
             display: flex;
             justify-content: center;
-            padding-top: 20px;
+            z-index: 1;
         }
 
-        /* 遊戲主畫面區域 */
-        #game-area {
+        #game-canvas-wrapper {
             position: relative;
             width: 480px;
-            height: 700px;
-            background-color: #222;
-            /* CSS 繪製日式背景，防止破圖 */
-            background-image: 
-                radial-gradient(circle at 50% 50%, #333 10%, transparent 10%),
-                radial-gradient(circle at 0% 50%, #333 10%, transparent 10%),
-                radial-gradient(circle at 100% 50%, #333 10%, transparent 10%);
-            background-size: 30px 30px;
-            border-radius: 15px 15px 60px 15px; /* 右下角切角給發射器 */
-            border: 4px solid #f1c40f;
-            box-shadow: inset 0 0 50px #000;
+            height: 750px;
+            background: #050505;
+            border: 2px solid #d4af37;
+            border-radius: 20px 20px 80px 20px;
+            box-shadow: inset 0 0 40px rgba(212, 175, 55, 0.2);
             overflow: hidden;
         }
-
-        /* 中央液晶螢幕 (裝飾用) */
-        #lcd-screen {
+        
+        /* 背景網格動畫 */
+        .bg-grid {
             position: absolute;
-            top: 250px; left: 50%;
-            transform: translateX(-50%);
-            width: 200px; height: 150px;
-            background: #000;
-            border: 4px solid #00ffff;
-            box-shadow: 0 0 20px #00ffff;
-            z-index: 0; /* 在釘子後面 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: #fff;
-            font-size: 24px;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(212, 175, 55, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212, 175, 55, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+            animation: bgScroll 20s linear infinite;
+        }
+        @keyframes bgScroll { from { transform: translateY(0); } to { transform: translateY(40px); } }
+
+        /* UI 層 */
+        #ui-layer {
+            position: absolute;
+            top: 30px; left: 0; width: 100%;
             text-align: center;
-            opacity: 0.8;
+            pointer-events: none;
+            z-index: 10;
         }
 
-        /* 分數顯示 */
-        #ui-score {
-            position: absolute;
-            top: 20px; right: 20px;
-            font-size: 40px;
-            color: #f1c40f;
-            text-shadow: 0 0 10px #ff0000;
-            z-index: 100;
+        .neon-text {
+            color: #fff;
+            font-size: 50px;
+            text-shadow: 
+                0 0 5px #fff,
+                0 0 10px #fff,
+                0 0 20px #d4af37,
+                0 0 40px #d4af37,
+                0 0 80px #d4af37;
+            letter-spacing: 5px;
         }
 
-        /* 手把區域 */
-        #handle-area {
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            width: 100px;
-            height: 100px;
-            background: radial-gradient(circle, #555, #222);
-            border-radius: 50%;
-            border: 5px solid #888;
-            box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        #handle-area:active { transform: rotate(15deg); }
-        #handle-text {
-            position: absolute;
-            top: 110%; left: 50%; transform: translateX(-50%);
-            color: white; font-size: 12px; white-space: nowrap;
-        }
-
-        #jackpot-msg {
+        #jackpot-overlay {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%) scale(0);
-            font-size: 60px; color: #ff0055;
-            text-shadow: 0 0 20px #fff;
-            transition: transform 0.2s;
-            z-index: 200;
+            text-align: center;
+            z-index: 100;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             pointer-events: none;
         }
-        #jackpot-msg.active { transform: translate(-50%, -50%) scale(1); }
+        #jackpot-overlay.active { transform: translate(-50%, -50%) scale(1); }
+        .fever-text {
+            font-size: 80px;
+            color: #ff00de;
+            background: -webkit-linear-gradient(#fff, #ff00de);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 0, 222, 0.8);
+            animation: shake 0.5s infinite;
+        }
+
+        /* 旋鈕 */
+        #knob-container {
+            position: absolute;
+            bottom: 40px; right: 40px;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #222, #000);
+            border: 4px solid #d4af37;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+            cursor: pointer;
+            z-index: 20;
+            transition: 0.1s;
+        }
+        #knob-container:active { transform: scale(0.95); box-shadow: 0 0 40px rgba(212, 175, 55, 0.8); }
+        .knob-indicator {
+            position: absolute;
+            top: 10%; left: 45%;
+            width: 10%; height: 40%;
+            background: #d4af37;
+            border-radius: 5px;
+        }
 
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
@@ -116,24 +130,27 @@
 </head>
 <body>
 
-    <div id="pachinko-frame">
-        <div id="ui-score">0</div>
+    <div id="machine-container">
+        <div id="game-canvas-wrapper">
+            <div class="bg-grid"></div>
+            <div id="ui-layer">
+                <div class="neon-text" id="score">0000</div>
+            </div>
+            <div id="jackpot-overlay">
+                <div class="fever-text">JACKPOT</div>
+                <div style="color:white; font-size:20px;">FEVER MODE ACTIVATED</div>
+            </div>
+            </div>
         
-        <div id="game-area">
-            <div id="lcd-screen">GOGO!<br>PACHINKO</div>
-            <div id="jackpot-msg">大当り!</div>
+        <div id="knob-container" onmousedown="startFiring()" onmouseup="stopFiring()" onmouseleave="stopFiring()">
+            <div class="knob-indicator"></div>
         </div>
-
-        <div id="handle-area" onmousedown="launchBall()">
-            <div style="width:100%; height:10px; background:#f00; position:absolute; top:45%; transform:rotate(45deg);"></div>
-        </div>
-        <div id="handle-text">按空白鍵或點擊</div>
     </div>
 
     <script>
-        // 替換為您的 CSV 連結 (請記得使用下面第二部分生成的資料)
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTO5nwKqK0iYAzeMKhQgUHEN3FSrcMDzYxgclXwAu5dAH0Bcx_lBd9_olSw8JTT_s354u1i_rqonZwF/pub?output=csv';
 
+        // --- 引擎設定 ---
         const Engine = Matter.Engine,
               Render = Matter.Render,
               Runner = Matter.Runner,
@@ -145,69 +162,151 @@
 
         const engine = Engine.create();
         const world = engine.world;
-        engine.gravity.y = 1.0; // 標準重力
-
-        // 尺寸定義
+        
+        // 關鍵物理調整：讓球變慢、變重、變黏
+        engine.gravity.y = 0.8; // 稍微降低重力
+        
+        // 尺寸
         const width = 480;
-        const height = 700;
+        const height = 750;
 
+        // 建立渲染器 (但我們會用 afterRender 覆蓋它來做特效)
         const render = Render.create({
-            element: document.getElementById('game-area'),
+            element: document.getElementById('game-canvas-wrapper'),
             engine: engine,
             options: {
                 width: width, height: height,
-                wireframes: false, background: 'transparent'
+                wireframes: false,
+                background: 'transparent', // 透明背景以顯示 CSS 網格
+                pixelRatio: 2 // 高解析度 Retina 支援
             }
         });
 
-        // --- 1. 建立機台結構 (牆壁與軌道) ---
-        // 這是帕青哥最關鍵的 "發射軌道"
-        const walls = [
-            // 左外牆
-            Bodies.rectangle(0, height/2, 20, height, { isStatic: true, render: {fillStyle: '#444'} }),
-            // 右外牆
-            Bodies.rectangle(width, height/2, 20, height, { isStatic: true, render: {fillStyle: '#444'} }),
-            // 底部
-            Bodies.rectangle(width/2, height + 50, width, 100, { isStatic: true, label: 'floor' }),
+        // --- 視覺特效系統 (Visual FX) ---
+        
+        // 粒子陣列
+        let particles = [];
+        
+        // 建立爆炸粒子
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 1.0,
+                    color: color || '#d4af37',
+                    size: Math.random() * 4 + 2
+                });
+            }
+        }
+
+        // 自定義繪圖循環 (讓畫面變華麗的關鍵)
+        Events.on(render, 'afterRender', function() {
+            const ctx = render.context;
             
-            // **發射軌道 (Shooter Lane)** - 圓弧形頂部
-            // 為了簡化，我們用多個矩形拼湊一個左上角的弧度
-            Bodies.rectangle(30, 100, 10, 200, { isStatic: true, angle: -0.2, render: {fillStyle: 'silver'} }),
-            Bodies.rectangle(80, 40, 150, 10, { isStatic: true, angle: 0.2, render: {fillStyle: 'silver'} }),
+            // 1. 開啟「發光模式」 (Additive Blending)
+            ctx.globalCompositeOperation = 'lighter';
+
+            // 2. 繪製粒子
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.fill();
+                
+                // 更新粒子物理
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.05; // 慢慢消失
+                p.size *= 0.9;  // 慢慢變小
+
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // 3. 繪製彈珠拖尾 (Trails)
+            const bodies = Composite.allBodies(world);
+            bodies.forEach(body => {
+                if (body.label === 'ball') {
+                    // 根據速度畫出拖尾
+                    const speed = body.speed;
+                    if (speed > 1) {
+                        ctx.beginPath();
+                        ctx.moveTo(body.position.x, body.position.y);
+                        // 反向延伸
+                        ctx.lineTo(body.position.x - body.velocity.x * 3, body.position.y - body.velocity.y * 3);
+                        ctx.lineWidth = body.circleRadius * 1.5;
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                        ctx.lineCap = 'round';
+                        ctx.stroke();
+                        
+                        // 核心發光
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = '#00ffff';
+                    }
+                }
+                
+                // 讓釘子也發光
+                if (body.label === 'nail') {
+                     ctx.shadowBlur = 5;
+                     ctx.shadowColor = '#d4af37';
+                     ctx.fillStyle = '#fff'; // 讓釘子中心更亮
+                     ctx.beginPath();
+                     ctx.arc(body.position.x, body.position.y, 2, 0, Math.PI*2);
+                     ctx.fill();
+                }
+
+                // 入賞口發光特效
+                if (body.label === 'pocket') {
+                     // 脈衝動畫
+                     const scale = 1 + Math.sin(engine.timing.timestamp * 0.005) * 0.1;
+                     ctx.shadowBlur = 20 * scale;
+                     ctx.shadowColor = '#ff0055';
+                }
+            });
+
+            // 重置混合模式
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+        });
+
+        // --- 遊戲物件 ---
+
+        // 牆壁
+        const walls = [
+            Bodies.rectangle(0, height/2, 40, height, { isStatic: true, render: { visible: false } }),
+            Bodies.rectangle(width, height/2, 40, height, { isStatic: true, render: { visible: false } }),
+            Bodies.rectangle(width/2, height + 50, width, 100, { isStatic: true, label: 'floor' }),
+            // 軌道
+            Bodies.rectangle(20, 100, 10, 250, { isStatic: true, angle: -0.15, render: { fillStyle: '#333' } }),
+            Bodies.rectangle(80, 20, 200, 10, { isStatic: true, angle: 0.1, render: { fillStyle: '#333' } })
         ];
         Composite.add(world, walls);
 
-        // --- 2. 讀取釘子資料 ---
+        // 讀取 CSV
         function loadLevel() {
             Papa.parse(CSV_URL, {
-                download: true,
-                header: true,
-                dynamicTyping: true,
+                download: true, header: true, dynamicTyping: true,
                 complete: function(results) {
                     const elements = [];
                     results.data.forEach(row => {
                         if (row.x && row.y) {
                             const size = row.size || 5;
-                            
-                            // 判斷類型
                             if (size >= 30) {
-                                // --- 入賞口 (Tulip / Pocket) ---
-                                // 建立感應區 (Sensor)
-                                const pocket = Bodies.circle(row.x, row.y, size/2, {
+                                // 入賞口
+                                elements.push(Bodies.circle(row.x, row.y, size/2, {
                                     isStatic: true, isSensor: true, label: 'pocket',
-                                    render: { fillStyle: 'rgba(255, 0, 85, 0.7)', strokeStyle: '#fff', lineWidth: 2 }
-                                });
-                                // 底部托盤圖形
-                                const tray = Bodies.trapezoid(row.x, row.y + 10, size, size/2, 0.5, {
-                                    isStatic: true, isSensor: true, render: { fillStyle: '#f1c40f' }
-                                });
-                                elements.push(pocket, tray);
+                                    render: { fillStyle: 'transparent', strokeStyle: '#ff0055', lineWidth: 3 }
+                                }));
                             } else {
-                                // --- 普通釘子 (Brass Nail) ---
-                                elements.push(Bodies.circle(row.x, row.y, 3, { // 釘子很細
+                                // 釘子
+                                elements.push(Bodies.circle(row.x, row.y, 3, { 
                                     isStatic: true, label: 'nail',
-                                    render: { fillStyle: '#eebb44' }, // 黃銅色
-                                    restitution: 0.6 // 釘子稍微吸能
+                                    render: { fillStyle: '#d4af37' },
+                                    restitution: 0.5 // 釘子稍微吸能，減少反彈速度
                                 }));
                             }
                         }
@@ -217,36 +316,71 @@
             });
         }
 
-        // --- 3. 發射邏輯 (模擬手把) ---
-        window.launchBall = function() {
-            // 球從右下角生成
-            const ball = Bodies.circle(440, 650, 5.5, { // 11mm 鋼珠
+        // --- 發射機制 (連發系統) ---
+        let fireInterval = null;
+
+        function fireBall() {
+            // 從右下角發射
+            // 重要：frictionAir 0.04 (空氣阻力) 是控制速度不要太快的關鍵
+            const ball = Bodies.circle(440, 680, 6, { 
                 label: 'ball',
-                restitution: 0.7, friction: 0.001,
-                render: { fillStyle: '#ecf0f1', strokeStyle: '#999', lineWidth: 1 }
+                frictionAir: 0.04,  // << 重點：極高的空氣阻力，創造「漂浮感」
+                restitution: 0.6,   // 彈性適中
+                density: 0.05,      // 增加質量，讓它感覺是「鋼」珠
+                render: { fillStyle: '#fff' } // 純白球體，靠後製特效上色
             });
 
             Composite.add(world, ball);
 
-            // 施加一個向左上方的瞬間力道 (模擬彈簧撞擊)
-            // 力道稍微隨機，模擬真實機台的不穩定性
-            const power = 0.038 + Math.random() * 0.004; 
-            Body.applyForce(ball, ball.position, { x: -power * 0.7, y: -power });
-        };
+            // 施加推力 (加入隨機變數)
+            const baseForce = 0.065;
+            const randomForce = (Math.random() - 0.5) * 0.005;
+            Body.applyForce(ball, ball.position, { x: -(baseForce + randomForce) * 0.6, y: -(baseForce + randomForce) });
 
-        // --- 4. 遊戲事件 ---
+            // 發射時的特效
+            createExplosion(440, 680, '#00ffff');
+        }
+
+        window.startFiring = function() {
+            if(fireInterval) return;
+            fireBall(); // 立即發射一顆
+            fireInterval = setInterval(fireBall, 600); // 每 0.6 秒一顆，避免過快
+            document.getElementById('knob-container').style.transform = 'rotate(20deg) scale(0.95)';
+        }
+
+        window.stopFiring = function() {
+            clearInterval(fireInterval);
+            fireInterval = null;
+            document.getElementById('knob-container').style.transform = 'rotate(0deg) scale(1)';
+        }
+
+        // 空白鍵控制
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space') startFiring(); });
+        window.addEventListener('keyup', (e) => { if(e.code === 'Space') stopFiring(); });
+
+        // --- 碰撞處理 ---
         let score = 0;
         Events.on(engine, 'collisionStart', (event) => {
             event.pairs.forEach(pair => {
                 const bodyA = pair.bodyA, bodyB = pair.bodyB;
-                // 檢查是否進洞
-                if ((bodyA.label === 'ball' && bodyB.label === 'pocket') || 
-                    (bodyB.label === 'ball' && bodyA.label === 'pocket')) {
-                    
-                    const ball = bodyA.label === 'ball' ? bodyA : bodyB;
-                    triggerJackpot(ball);
+
+                // 球撞釘子 -> 產生小火花
+                if ((bodyA.label === 'ball' && bodyB.label === 'nail') || (bodyB.label === 'ball' && bodyA.label === 'nail')) {
+                    const contact = pair.contacts[0]; // 取得碰撞點
+                    if (contact) {
+                        createExplosion(contact.vertex.x, contact.vertex.y, '#ffd700');
+                    }
                 }
-                // 檢查是否掉出底部
+
+                // 球進洞 -> 豪華特效
+                if ((bodyA.label === 'ball' && bodyB.label === 'pocket') || (bodyB.label === 'ball' && bodyA.label === 'pocket')) {
+                    const ball = bodyA.label === 'ball' ? bodyA : bodyB;
+                    const pocket = bodyA.label === 'pocket' ? bodyA : bodyB;
+                    
+                    triggerJackpot(ball, pocket);
+                }
+
+                // 清除掉落的球
                 if (bodyA.label === 'floor' || bodyB.label === 'floor') {
                     const ball = bodyA.label === 'ball' ? bodyA : bodyB;
                     Composite.remove(world, ball);
@@ -254,44 +388,33 @@
             });
         });
 
-        function triggerJackpot(ball) {
-            Composite.remove(world, ball);
-            score += 150; // 15R
-            document.getElementById('ui-score').innerText = score;
+        function triggerJackpot(ball, pocket) {
+            Composite.remove(world, ball); // 移除球
+            score += 150;
+            document.getElementById('score').innerText = score.toString().padStart(4, '0');
+
+            // 1. 產生大量爆炸特效
+            createExplosion(pocket.position.x, pocket.position.y, '#ff0055');
+            createExplosion(pocket.position.x, pocket.position.y, '#ffffff');
+
+            // 2. 顯示大字 UI
+            const overlay = document.getElementById('jackpot-overlay');
+            overlay.classList.add('active');
             
-            // 特效
-            const msg = document.getElementById('jackpot-msg');
-            msg.classList.add('active');
-            setTimeout(() => msg.classList.remove('active'), 1000);
-            
-            // 螢幕閃爍
-            const screen = document.getElementById('lcd-screen');
-            screen.style.background = '#fff';
-            screen.style.color = '#f00';
-            screen.innerHTML = "777<br>FEVER!!";
-            setTimeout(() => {
-                screen.style.background = '#000';
-                screen.style.color = '#fff';
-                screen.innerHTML = "GOGO!<br>PACHINKO";
-            }, 2000);
+            // 3. 畫面震動 (Camera Shake)
+            const wrapper = document.getElementById('game-canvas-wrapper');
+            wrapper.style.transform = `translate(${Math.random()*10-5}px, ${Math.random()*10-5}px)`;
+            setTimeout(() => wrapper.style.transform = 'none', 100);
+
+            // 4. 自動收起 UI
+            setTimeout(() => overlay.classList.remove('active'), 1000);
         }
 
-        // --- 啟動 ---
         loadLevel();
         Render.run(render);
         const runner = Runner.create();
         Runner.run(runner, engine);
 
-        // **修正空白鍵**
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault(); // 禁止滾動
-                launchBall();
-                // 讓手把動一下
-                document.getElementById('handle-area').style.transform = 'rotate(15deg)';
-                setTimeout(() => document.getElementById('handle-area').style.transform = 'rotate(0deg)', 100);
-            }
-        });
     </script>
 </body>
 </html>
